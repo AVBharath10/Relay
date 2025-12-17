@@ -1,5 +1,7 @@
 package io.relay.limiter;
 
+import io.relay.limiter.policy.RateLimitPolicy;
+import io.relay.limiter.policy.RateLimitPolicyResolver;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -9,32 +11,41 @@ import java.time.Duration;
 public class RateLimiter {
 
     private final StringRedisTemplate redisTemplate;
+    private final RateLimitPolicyResolver policyResolver;
 
-    private static final int LIMIT = 5;
-    private static final int WINDOW_SECONDS = 180;
-
-    public RateLimiter(StringRedisTemplate redisTemplate) {
+    public RateLimiter(
+            StringRedisTemplate redisTemplate,
+            RateLimitPolicyResolver policyResolver
+    ) {
         this.redisTemplate = redisTemplate;
+        this.policyResolver = policyResolver;
     }
 
     public Result check(String key) {
 
+        //  Resolve policy dynamically
+        RateLimitPolicy policy = policyResolver.resolve(key);
+        int limit = policy.limit();
+        int windowSeconds = policy.windowSeconds();
+
+        //  Calculate window
         long nowSeconds = System.currentTimeMillis() / 1000;
-        long windowId = nowSeconds / WINDOW_SECONDS;
+        long windowId = nowSeconds / windowSeconds;
 
-        // one shared Redis key across ALL servers
-        String redisKey = key + ":" + windowId;
+        //  Redis key (shared across servers)
+        String redisKey = "rl:" + key + ":" + windowId;
 
-        // ATOMIC increment (distributed-safe)
+        //  Atomic increment
         Long count = redisTemplate.opsForValue().increment(redisKey);
 
-        // first request → set TTL
+        //  Set TTL on first hit
         if (count != null && count == 1) {
-            redisTemplate.expire(redisKey, Duration.ofSeconds(WINDOW_SECONDS));
+            redisTemplate.expire(redisKey, Duration.ofSeconds(windowSeconds));
         }
 
-        boolean allowed = count != null && count <= LIMIT;
-        int remaining = Math.max(0, LIMIT - (count != null ? count.intValue() : 0));
+        // Decision
+        boolean allowed = count != null && count <= limit;
+        int remaining = Math.max(0, limit - (count != null ? count.intValue() : 0));
 
         return new Result(allowed, remaining);
     }

@@ -1,0 +1,16 @@
+ratelimiter:
+  policies:
+    - pattern: "/login"
+      limit: 5
+      windowSeconds: 180
+
+    - pattern: "/search"
+      limit: 100
+      windowSeconds: 60
+
+    - pattern: "/signup"
+      limit: 5
+      windowSeconds: 60
+  default:
+    limit: 50
+    windowSeconds: 60
