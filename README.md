@@ -1,94 +1,130 @@
-# Relay
+# Relay 🚀
 
-Relay is a lightweight, distributed rate-limiting service built with [Spring Boot](https://spring.io/projects/spring-boot) and [Redis](https://redis.io/). It provides a simple REST API to verify if an action is permitted based on a sliding window rate limit.
+**Relay** is a high-performance, distributed rate limiter built with **Java 21** and **Spring Boot 3**. It uses **Redis** as a centralized state store to manage request counters across multiple application instances, making it suitable for microservices and distributed architectures.
 
-## Features
+##  Features
 
-- **Distributed Rate Limiting**: Leverages Redis to maintain consistent counters across multiple application instances.
-- **Atomic Operations**: Uses Redis atomic increments to ensure thread-safety and accuracy in concurrent environments.
-- **Simple API**: Minimalistic endpoint for easy integration.
+*   **Distributed Design**: Stateless service instances share state via Redis.
+*   **Policy-Based Configuration**: Define rate limits based on URL patterns or keys.
+*   **Rate Limiting Algorithm**: Fixed window counter using Redis atomic operations (sliding-window–like behavior).
+*   **High Performance**: Minimal overhead using Redis atomic increment and TTL operations.
+*   **Easy Deployment**: Docker Compose support for instant setup.
 
-## Requirements
+##  Tech Stack
 
-- **Java 21** or higher
-- **Redis Server**
+*   **Java 21**
+*   **Spring Boot 3.5** (Web, Data Redis)
+*   **Redis 7**
+*   **Docker & Docker Compose**
+*   **Maven**
 
-## Getting Started
+##  Prerequisites
 
-### Installation
+*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
+*   (Optional) [Java 21 SDK](https://adoptium.net/) if running without Docker.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/relay.git
-   cd Relay
-   ```
+##  Getting Started
 
-2. **Start Redis**: Ensure you have a Redis server running locally on port `6379`.
-   - If you have Docker, you can run: `docker run -p 6379:6379 -d redis`
+### Option 1: Run with Docker Compose (Recommended)
 
-### Running the Application
+This is the fastest way to get everything running (Relay Service + Redis).
 
-You can run the application using the included Maven wrapper:
+1.  **Build the application:**
+    ```bash
+    ./mvnw clean package -DskipTests
+    ```
+    *(Note: The Dockerfile expects the jar to be in `target/`)*
 
-**Linux/macOS:**
-```bash
-./mvnw spring-boot:run
+2.  **Start the services:**
+    ```bash
+    docker-compose up --build
+    ```
+
+3.  The application will start on port `8080` and Redis on port `6379`.
+
+### Option 2: Run Locally
+
+1.  **Start Redis:**
+    You need a running Redis instance on `localhost:6379`.
+    ```bash
+    docker run -p 6379:6379 redis:7
+    ```
+
+2.  **Run the Application:**
+    ```bash
+    ./mvnw spring-boot:run
+    ```
+
+##  Configuration
+
+Rate limiting policies are configured in `src/main/resources/application.yml`.
+
+The system matches requests using a simple substring match on the "key" (usually a URL path or user ID).
+
+```yaml
+ratelimiter:
+  policies:
+    # Allow 5 requests every 3 minutes for login
+    - pattern: "/login"
+      limit: 5
+      windowSeconds: 180
+
+    # Allow 100 requests every minute for search
+    - pattern: "/search"
+      limit: 100
+      windowSeconds: 60
+
+  # Default policy if no pattern matches
+  default:
+    limit: 50
+    windowSeconds: 60
 ```
 
-**Windows:**
-```cmd
-mvnw.cmd spring-boot:run
-```
-
-The application will start on `http://localhost:8080`.
-
-## API Reference
+##  API Reference
 
 ### Check Rate Limit
 
-Check if a specific identifier (like a User ID or API Key) has remaining quota.
+Endpoint: `POST /check`
 
-- **URL**: `/check`
-- **Method**: `POST`
-- **Content-Type**: `application/json`
+Check if a specific key is allowed.
 
-#### Request
+**Request Body:**
 
 ```json
 {
-  "key": "user_identifier_123"
+  "key": "/search/user/123"
 }
 ```
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `key` | `string` | A unique identifier for the client (e.g., user ID, IP address). |
-
-#### Response
+**Response:**
 
 ```json
 {
   "allowed": true,
-  "remaining": 4
+  "remaining": 99
 }
 ```
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `allowed` | `boolean` | `true` if the request is within the limit, `false` otherwise. |
-| `remaining` | `integer` | The number of requests remaining in the current time window. |
+### Example Usage
 
-## Configuration
+```bash
+curl -X POST http://localhost:8080/check \
+     -H "Content-Type: application/json" \
+     -d '{"key": "/search"}'
+```
 
-Currently, the rate limits are configured in `RateLimiter.java`:
+If the limit is exceeded:
+```json
+{
+  "allowed": false,
+  "remaining": 0
+}
+```
 
-- **Limit**: 5 requests
-- **Window**: 180 seconds
+## 🧪 Testing
 
-## Tech Stack
+Run unit and integration tests with Maven:
 
-- Java 21
-- Spring Boot 3.5.8
-- Spring Data Redis
-- Maven
-
+```bash
+./mvnw test
+```
