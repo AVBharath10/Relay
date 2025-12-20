@@ -23,6 +23,20 @@
 *   [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
 *   (Optional) [Java 21 SDK](https://adoptium.net/) if running without Docker.
 
+##  Developing with Nix (Recommended)
+This project uses **Nix Flakes** to provide a reproducible development environment with Java 21, Maven, and Redis pre-configured.
+
+1.  **Install Nix**: [Download Nix](https://nixos.org/download.html)
+    *   **Windows Users**: You **must** use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) to run Nix. It does not work in PowerShell/CMD directly.
+2.  **Enable Flakes**: Ensure `experimental-features = nix-command flakes` is in your `nix.conf`.
+3.  **Enter Environment**:
+    ```bash
+    nix develop
+    # Or if you use direnv:
+    direnv allow
+    ```
+    You now have `java`, `mvn`, and `redis-server` available in your shell, exactly matching the project version.
+
 ##  Getting Started
 
 ### Option 1: Run with Docker Compose (Recommended)
