@@ -1,4 +1,4 @@
-# Relay 🚀
+# Relay 
 
 **Relay** is a high-performance, distributed rate limiter built with **Java 21** and **Spring Boot 3**. It uses **Redis** as a centralized state store to manage request counters across multiple application instances, making it suitable for microservices and distributed architectures.
 
@@ -121,7 +121,7 @@ If the limit is exceeded:
 }
 ```
 
-## 🧪 Testing
+##  Testing
 
 Run unit and integration tests with Maven:
 
